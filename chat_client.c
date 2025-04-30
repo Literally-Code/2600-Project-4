@@ -44,7 +44,35 @@ int main()
 		close(client_fd);
 	}
 
+	//message
+	char buffer[1024];
+	//loop to send and recieve
+	while (1) {
+		
+		//user input
+		printf("You: ");
+		fgets(buffer, sizeof(buffer), stdin);
+		
+		//send input message
+		send(client_fd, buffer, strlen(buffer), 0);
+		
+		//get replies
+		memset(buffer, 0, sizeof(buffer));
+		ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 
+		if (bytes_received == 0) {
+			printf("Connection closed by peer.");
+			break;
+		} 
+		if (bytes_received < 0) {
+			printf("Connection failed.");
+			break;
+		}
+
+		printf("From server: %s", buffer);
+		
+
+	}
 	
 	close(client_fd);
 	return 0;
