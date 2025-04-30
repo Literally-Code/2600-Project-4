@@ -17,7 +17,7 @@ int main()
 		exit(-1);
 	}
 
-	struct hostend* host_ptr = gethostbyname(HOST);
+	struct hostent* host_ptr = gethostbyname(HOST);
 	
 	if (host_ptr == NULL)
 	{
@@ -30,6 +30,7 @@ int main()
 		perror("Bad address family\n");
 		exit(-1);
 	}
+
 
 	struct sockaddr_in server_addr;
 	memset(&server_addr, 0, sizeof(server_addr));
