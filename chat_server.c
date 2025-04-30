@@ -8,25 +8,36 @@
 #define PORT 59222
 #define BUFFER_SIZE 1024
 #define MAX_CONNECTIONS 10
+#define BUFFER_SIZE 2048
 
 pthread_mutex_t history_mutex = PTHREAD_MUTEX_INITIALIZER;
 FILE* message_history;
 const char* history_file = "./mhist";
+int server_fd;
 
-void* handle_client(void* message)
+void* handle_client(void* arg)
 {
-	pthread_mutex_lock(history_mutex);
-	
-	message_history = fopen(history_file, "a");
-	fprintf(message_history, (char*)message);
-	fclose(history_file);
+	struct sockaddr_in* client_addr = (struct sockaddr_in*)argv;
+	char buffer[BUFFER_SIZE];
 
-	pthread_mutex_unlock(history_mutex);
+	while (1)
+	{
+		recv(servere_fd, buffer, BUFFER_SIZE - 1, 0);
+
+		pthread_mutex_lock(history_mutex);
+		
+		message_history = fopen(history_file, "a");
+		fprintf(message_history, message);
+		fclose(history_file);
+
+		pthread_mutex_unlock(history_mutex);
+
+		send();
+	}
 }
 
 int main()
 {
-	int server_fd;
 	struct sockaddr_in server_addr;
 	char buffer[BUFFER_SIZE];
 	pthread_t threads[MAX_CONNECTIONS];
@@ -70,9 +81,11 @@ int main()
 		}
 
 		// Do stuff
+		
 
 		close(client_fd);
 	}
 
+	pthread_mutex_destroy(history_mutex);
 	return 0;
 }
