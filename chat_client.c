@@ -11,13 +11,13 @@ int main()
 {
 	int client_fd = socket(AF_INET, SOCK_STREAM, 0);
 
-	if (client_fc < 0)
+	if (client_fd < 0)
 	{
 		perror("Could not open socket\n");
 		exit(-1);
 	}
 
-	struct hostend* host_ptr = gethostbyname(HOST);
+	struct hostent* host_ptr = gethostbyname(HOST);
 	
 	if (host_ptr == NULL)
 	{
