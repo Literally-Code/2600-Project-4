@@ -3,17 +3,34 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #define PORT 59222
 #define BUFFER_SIZE 1024
 #define MAX_CONNECTIONS 10
+
+pthread_mutex_t history_mutex = PTHREAD_MUTEX_INITIALIZER;
+FILE* message_history;
+const char* history_file = "./mhist";
+
+void* handle_client(void* message)
+{
+	pthread_mutex_lock(history_mutex);
+	
+	message_history = fopen(history_file, "a");
+	fprintf(message_history, (char*)message);
+	fclose(history_file);
+
+	pthread_mutex_unlock(history_mutex);
+}
 
 int main()
 {
 	int server_fd;
 	struct sockaddr_in server_addr;
 	char buffer[BUFFER_SIZE];
-	
+	pthread_t threads[MAX_CONNECTIONS];
+
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
 		perror("Socket connection failed\n");

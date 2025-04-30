@@ -11,7 +11,7 @@ int main()
 {
 	int client_fd = socket(AF_INET, SOCK_STREAM, 0);
 
-	if (client_fc < 0)
+	if (client_fd < 0)
 	{
 		perror("Could not open socket\n");
 		exit(-1);
@@ -37,7 +37,14 @@ int main()
 	server_addr.sin_addr.s_addr = ((struct in_addr*)hptr->h_addr_list[0])->s_addr;
 	server_addr.sin_port = htons(PORT);
 	
-	// TODO: Connection and transmission
+	if (connect(client_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
+	{
+		perror("Could not connect to server\n");
+		close(client_fd);
+	}
 
+
+	
+	close(client_fd);
 	return 0;
 }
