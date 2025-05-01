@@ -70,7 +70,7 @@ void* handle_client(void* arg)
 	}
 }
 
-int next_free_thread()
+int get_open_spot()
 {
 	for (int i = 0; i < MAX_CONNECTIONS; i++)
 	{
@@ -124,7 +124,7 @@ int main()
 
 		// Do stuff
 		
-		int next_free_spot = get_open_spot(connections);
+		int next_free_spot = get_open_spot();
 		
 		if (next_free_spot = -1)
 		{
