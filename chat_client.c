@@ -68,10 +68,6 @@ int main()
 			printf("Connection failed.");
 			break;
 		}
-
-		printf("From server: %s", buffer);
-		
-
 	}
 	
 	close(client_fd);

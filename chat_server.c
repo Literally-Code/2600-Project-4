@@ -38,6 +38,11 @@ void* handle_client(void* arg)
 	char latest_history[HISTORY_SIZE];
 	char updated_buffer[BUFFER_SIZE + HISTORY_SIZE + PADDING];
 
+	// Send current chat history
+	history_file = fopen(history_location, "r");
+	fread(latest_history, sizeof(chat), HISTORY_SIZE, history_file);
+	send(server_fd, updated_buffer, BUFFER_SIZE + HISTORY_SIZE + PADDING, 0);
+
 	while (1)
 	{
 		// I can't spell recie received recieved??
