@@ -34,21 +34,20 @@ void* handle_client(void* arg)
 	connection* client_conn = (connection*)arg;
 	struct sockaddr_in* client_addr =  client_conn->addr_in;
 
-	char buffer[BUFFER_SIZE];
-	char latest_history[HISTORY_SIZE];
-	char updated_buffer[BUFFER_SIZE + HISTORY_SIZE + PADDING];
+	char message[BUFFER_SIZE];
+	char history[HISTORY_SIZE];
 
 	// Send current chat history
 	history_file = fopen(history_location, "r");
-	fread(latest_history, sizeof(chat), HISTORY_SIZE, history_file);
-	send(server_fd, updated_buffer, BUFFER_SIZE + HISTORY_SIZE + PADDING, 0);
+	fread(history, sizeof(char), HISTORY_SIZE, history_file);
+	send(server_fd, history, HISTORY_SIZE, 0);
 
 	while (1)
 	{
 		// I can't spell recie received recieved??
-		ssize_t bytes_rcvd = recv(server_fd, buffer, BUFFER_SIZE - 1, 0);
+		ssize_t bytes_rcvd = recv(server_fd, message, BUFFER_SIZE - 1, 0);
 		// Set the last character to a null terminator jusssst in case
-		buffer[BUFFER_SIZE - 1] = '0';
+		message[BUFFER_SIZE - 1] = '0';
 
 		// Handle disconnection
 		if (bytes_rcvd == 0)
@@ -61,16 +60,22 @@ void* handle_client(void* arg)
 		// Lock history file for appending client's message
 		pthread_mutex_lock(&history_mutex);
 		
-		history_file = fopen(history_location, "rw");
-		fread(latest_history, sizeof(char), HISTORY_SIZE, history_file);
-		sprintf(updated_buffer, "%s%s\n", latest_history, buffer);
+		history_file = fopen(history_location, "ra");
+		fprintf(history_file, message);
+		int f_size = ftell(history_file);
+		
+		if (f_size > HISTORY_SIZE)
+			fseek(history_file, -HISTORY_SIZE, SEEK_END);
+		else
+			fseek(history_file, 0, SEEK_SET);
 
-		fprintf(history_file, updated_buffer);
+		fread(history, sizeof(char), HISTORY_SIZE, history_file);
+
 		fclose(history_file);
 
 		pthread_mutex_unlock(&history_mutex);
-		// Prayer said here
-		send(server_fd, updated_buffer, BUFFER_SIZE + HISTORY_SIZE + PADDING, 0);
+		
+		send(server_fd, history, HISTORY_SIZE, 0);
 	}
 }
 

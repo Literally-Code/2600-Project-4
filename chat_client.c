@@ -3,9 +3,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #define HOST "localhost"
 #define PORT 59222
+#define HISTORY_SIZE 2048
 
 int main()
 {
@@ -35,7 +37,7 @@ int main()
 	struct sockaddr_in server_addr;
 	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = ((struct in_addr*)hptr->h_addr_list[0])->s_addr;
+	server_addr.sin_addr.s_addr = ((struct in_addr*)host_ptr->h_addr_list[0])->s_addr;
 	server_addr.sin_port = htons(PORT);
 	
 	if (connect(client_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
@@ -46,13 +48,18 @@ int main()
 
 	//message
 	char buffer[1024];
+	char history[HISTORY_SIZE];
 	//loop to send and recieve
 	while (1) {
-		
+		//get current chat and print
+		recv(client_fd, &history, HISTORY_SIZE, 0);
+		printf(history);
+
 		//user input
 		printf("You: ");
 		fgets(buffer, sizeof(buffer), stdin);
 		
+		/*
 		//send input message
 		send(client_fd, buffer, strlen(buffer), 0);
 		
@@ -68,6 +75,7 @@ int main()
 			printf("Connection failed.");
 			break;
 		}
+		*/
 	}
 	
 	close(client_fd);
