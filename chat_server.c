@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #define PORT 59222
-#define BUFFER_SIZE 1024
 #define MAX_CONNECTIONS 10
 #define BUFFER_SIZE 512
 #define HISTORY_SIZE 2048
@@ -25,15 +24,15 @@ typedef struct
 } connection;
 
 pthread_mutex_t history_mutex = PTHREAD_MUTEX_INITIALIZER;
-FILE* message_history;
-const char* history_file = "./mhist";
+FILE* history_file;
+const char* history_location = "./mhist";
 int server_fd;
 connection connections[MAX_CONNECTIONS];
 
 void* handle_client(void* arg)
 {
 	connection* client_conn = (connection*)arg;
-	struct sockaddr_in* client_addr client_conn->addr_in;
+	struct sockaddr_in* client_addr =  client_conn->addr_in;
 
 	char buffer[BUFFER_SIZE];
 	char latest_history[HISTORY_SIZE];
@@ -44,27 +43,27 @@ void* handle_client(void* arg)
 		// I can't spell recie received recieved??
 		ssize_t bytes_rcvd = recv(server_fd, buffer, BUFFER_SIZE - 1, 0);
 		// Set the last character to a null terminator jusssst in case
-		buffer[BUFFER_SIZE - 1] = '0'
+		buffer[BUFFER_SIZE - 1] = '0';
 
 		// Handle disconnection
 		if (bytes_rcvd == 0)
 		{
-			connections[connection->id].active = 0;
-			printf("Client \'%s\' at %s%s disconnected\n", connection->client_name, inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port));
+			connections[client_conn->id].active = 0;
+			printf("Client \'%s\' at %s%s disconnected\n", client_conn->client_name, inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port));
 			return 0;
 		}
 
 		// Lock history file for appending client's message
-		pthread_mutex_lock(history_mutex);
+		pthread_mutex_lock(&history_mutex);
 		
-		message_history = fopen(history_file, "rw");
-		fread(latest_history)
+		history_file = fopen(history_location, "rw");
+		fread(latest_history, sizeof(char), HISTORY_SIZE, history_file);
 		sprintf(updated_buffer, "%s%s\n", latest_history, buffer);
 
-		fprintf(message_history, updated_buffer);
+		fprintf(history_file, updated_buffer);
 		fclose(history_file);
 
-		pthread_mutex_unlock(history_mutex);
+		pthread_mutex_unlock(&history_mutex);
 		// Prayer said here
 		send(server_fd, updated_buffer, BUFFER_SIZE + HISTORY_SIZE + PADDING, 0);
 	}
@@ -144,14 +143,14 @@ int main()
 		connections[next_free_spot].id = next_free_spot;
 		connections[next_free_spot].active = 1;
 		// TODO: Add name implementation
-		connections[next_free_spot].name[0] = '\0';
+		connections[next_free_spot].client_name[0] = '\0';
 
 		// Detach the thread because we don't care about it's result
-		pthread_detach(&(threads[next_thread]));
+		pthread_detach(connections[next_free_spot].thread);
 
 		close(client_fd);
 	}
 
-	pthread_mutex_destroy(history_mutex);
+	pthread_mutex_destroy(&history_mutex);
 	return 0;
 }
