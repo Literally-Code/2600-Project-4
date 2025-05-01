@@ -3,9 +3,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <stddef.h>
+#include <pthread.h>
 
 #define HOST "localhost"
 #define PORT 59222
+#define BUFFER_SIZE 512
+#define NAME_SIZE 16
+
+
+
 
 int main()
 {
@@ -44,21 +51,64 @@ int main()
 		close(client_fd);
 	}
 
+	
 	//message
-	char buffer[1024];
-	//loop to send and recieve
+	char buffer[BUFFER_SIZE];
+	char username[NAME_SIZE];
+	
+	//get username
+	printf("Enter your username: ");
+	fgets(username, sizeof(username), stdin);
+	username[strcspn(username, "\n")] = '\0';
+
+	//loop to send and receive
 	while (1) {
 		
 		//user input
-		printf("You: ");
+		printf("%s: ", username);
 		fgets(buffer, sizeof(buffer), stdin);
 		
 		//send input message
-		send(client_fd, buffer, strlen(buffer), 0);
+		if(send(client_fd, buffer, strlen(buffer), 0) < 0) {
+			perror("Message send failed.");
+			break;
+		}
 		
-		//get replies
+		//get replies, right now only gets reply once input //message
+        char buffer[BUFFER_SIZE];
+        char username[NAME_SIZE];
+        //loop to send and recieve
+        while (1) {
+
+                //user input
+                printf("%s: ", username);
+                fgets(buffer, sizeof(buffer), stdin);
+
+                //send input message
+                send(client_fd, buffer, strlen(buffer), 0);
+
+                //get replies
+                memset(buffer, 0, sizeof(buffer));
+                ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+
+                if (bytes_received == 0) {
+                        printf("Connection closed by peer.");
+                        break;
+                }
+                if (bytes_received < 0) {
+                        printf("Connection failed.");
+                        break;
+                }
+
+                printf("From server: %s", buffer);
+
+
+        }
+
+        close(client_fd);
+        return 0;
 		memset(buffer, 0, sizeof(buffer));
-		ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+		ssize_t bytes_received = recv(client_fd, &buffer, sizeof(buffer) - 1, 0);
 
 		if (bytes_received == 0) {
 			printf("Connection closed by peer.");
@@ -69,7 +119,9 @@ int main()
 			break;
 		}
 
-		printf("From server: %s", buffer);
+		printf("%s", buffer);
+
+
 		
 
 	}
