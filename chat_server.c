@@ -4,43 +4,85 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <stddef.h>
 
 #define PORT 59222
 #define BUFFER_SIZE 1024
 #define MAX_CONNECTIONS 10
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 512
+#define HISTORY_SIZE 2048
+#define PADDING 8
+#define NAME_SIZE 16
+
+// 'id' is the same as its index in 'connection connections[]'
+typedef struct
+{
+	int id;
+	char client_name[NAME_SIZE];
+	struct sockaddr_in *addr_in;
+	char active;
+	pthread_t thread;
+} connection;
 
 pthread_mutex_t history_mutex = PTHREAD_MUTEX_INITIALIZER;
 FILE* message_history;
 const char* history_file = "./mhist";
 int server_fd;
+connection connections[MAX_CONNECTIONS];
 
 void* handle_client(void* arg)
 {
-	struct sockaddr_in* client_addr = (struct sockaddr_in*)argv;
+	connection* client_conn = (connection*)arg;
+	struct sockaddr_in* client_addr client_conn->addr_in;
+
 	char buffer[BUFFER_SIZE];
+	char latest_history[HISTORY_SIZE];
+	char updated_buffer[BUFFER_SIZE + HISTORY_SIZE + PADDING];
 
 	while (1)
 	{
-		recv(servere_fd, buffer, BUFFER_SIZE - 1, 0);
+		// I can't spell recie received recieved??
+		ssize_t bytes_rcvd = recv(server_fd, buffer, BUFFER_SIZE - 1, 0);
+		// Set the last character to a null terminator jusssst in case
+		buffer[BUFFER_SIZE - 1] = '0'
 
+		// Handle disconnection
+		if (bytes_rcvd == 0)
+		{
+			connections[connection->id].active = 0;
+			printf("Client \'%s\' at %s%s disconnected\n", connection->client_name, inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port));
+			return 0;
+		}
+
+		// Lock history file for appending client's message
 		pthread_mutex_lock(history_mutex);
 		
-		message_history = fopen(history_file, "a");
-		fprintf(message_history, message);
+		message_history = fopen(history_file, "rw");
+		fread(latest_history)
+		sprintf(updated_buffer, "%s%s\n", latest_history, buffer);
+
+		fprintf(message_history, updated_buffer);
 		fclose(history_file);
 
 		pthread_mutex_unlock(history_mutex);
-
-		send();
+		// Prayer said here
+		send(server_fd, updated_buffer, BUFFER_SIZE + HISTORY_SIZE + PADDING, 0);
 	}
+}
+
+int next_free_thread()
+{
+	for (int i = 0; i < MAX_CONNECTIONS; i++)
+	{
+		if (!connections[i].active)
+			return i;
+	}
+	return -1;
 }
 
 int main()
 {
 	struct sockaddr_in server_addr;
-	char buffer[BUFFER_SIZE];
-	pthread_t threads[MAX_CONNECTIONS];
 
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
@@ -82,6 +124,30 @@ int main()
 
 		// Do stuff
 		
+		int next_free_spot = get_open_spot(connections);
+		
+		if (next_free_spot = -1)
+		{
+			perror("Maximum connections reached, cannot accept additional connection\n");
+			continue;
+		}
+
+		// Spawn new thread. Thread will run indefinitely, handling client connections 
+		int create_thread_result = pthread_create(&(connections[next_free_spot].thread), NULL, handle_client, (void*)&client_addr);
+
+		if (create_thread_result != 0)
+		{
+			perror("pthread_create failed\n");
+			continue;
+		}
+		
+		connections[next_free_spot].id = next_free_spot;
+		connections[next_free_spot].active = 1;
+		// TODO: Add name implementation
+		connections[next_free_spot].name[0] = '\0';
+
+		// Detach the thread because we don't care about it's result
+		pthread_detach(&(threads[next_thread]));
 
 		close(client_fd);
 	}
