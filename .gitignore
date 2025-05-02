@@ -3,3 +3,5 @@ chat_client
 chat_server
 mhist
 *.debug
+.*
+!.gitignore

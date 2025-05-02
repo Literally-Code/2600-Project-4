@@ -4,10 +4,12 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <stddef.h>
 
 #define HOST "localhost"
 #define PORT 59222
 #define HISTORY_SIZE 2048
+#define BUFFER_SIZE 1024
 
 int main()
 {
@@ -44,39 +46,34 @@ int main()
 	{
 		perror("Could not connect to server\n");
 		close(client_fd);
+		exit(-1);
 	}
+	
+	printf("Connection successful, gathering chat history\n");
 
 	//message
-	char buffer[1024];
+	char buffer[BUFFER_SIZE];
 	char history[HISTORY_SIZE];
 	//loop to send and recieve
 	while (1) {
 		//get current chat and print
-		printf("Connection successful, gathering chat history\n");
-		recv(client_fd, &history, HISTORY_SIZE, 0);
-		printf(history);
+		int total = 0;
+
+		ssize_t bytes_rcvd = recv(client_fd, history, HISTORY_SIZE, 0);
+		printf("%d%s\n", bytes_rcvd, history);
+
+		if (bytes_rcvd == 0)
+		{
+			printf("Connection terminated by server.\n");
+			break;
+		}
 
 		//user input
 		printf("You: ");
-		fgets(buffer, sizeof(buffer), stdin);
+		fgets(buffer, BUFFER_SIZE, stdin);
 		
-		/*
 		//send input message
 		send(client_fd, buffer, strlen(buffer), 0);
-		
-		//get replies
-		memset(buffer, 0, sizeof(buffer));
-		ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-
-		if (bytes_received == 0) {
-			printf("Connection closed by peer.");
-			break;
-		} 
-		if (bytes_received < 0) {
-			printf("Connection failed.");
-			break;
-		}
-		*/
 	}
 	
 	close(client_fd);
