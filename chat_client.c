@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <stddef.h>
 #include <pthread.h>
+#include <netdb.h>
 
 #define HOST "localhost"
 #define PORT 59222
@@ -12,20 +13,51 @@
 #define NAME_SIZE 16
 
 
+int client_fd;
+char username[NAME_SIZE];
 
+//helper function for the recieve thread
+void* receive_messages(void* arg){
+	char buffer[BUFFER_SIZE];
+
+	while(1) {
+		//clear buffer
+		ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+		//error checking
+		if (bytes_received == 0) {
+            		printf("Connection closed by server.\n");
+            		break;
+        	} 
+        
+		if (bytes_received < 0) {
+            		printf("Connection failed.\n");
+            		break;
+       		}
+
+		//print receiving messages
+		buffer[bytes_received] = '\0'; //safety
+		printf("%s", buffer);
+	}
+
+	return NULL;
+}
 
 int main()
 {
-	int client_fd = socket(AF_INET, SOCK_STREAM, 0);
-
+	//init client_fd
+	client_fd = socket(AF_INET, SOCK_STREAM, 0);
+	
+	//error checking client_fd
 	if (client_fd < 0)
 	{
 		perror("Could not open socket\n");
 		exit(-1);
 	}
 
-	struct hostent* host_ptr = gethostbyname(HOST);
+	//init host_ptr
+	struct hostent *host_ptr = gethostbyname(HOST);
 	
+	//error checking host_pot
 	if (host_ptr == NULL)
 	{
 		perror("Could not get host\n");
@@ -38,13 +70,14 @@ int main()
 		exit(-1);
 	}
 
-
+	//initializing server_addr
 	struct sockaddr_in server_addr;
 	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = ((struct in_addr*)hptr->h_addr_list[0])->s_addr;
+	server_addr.sin_addr.s_addr = ((struct in_addr*)host_ptr->h_addr_list[0])->s_addr;
 	server_addr.sin_port = htons(PORT);
 	
+	//error checking server_addr
 	if (connect(client_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
 	{
 		perror("Could not connect to server\n");
@@ -52,15 +85,25 @@ int main()
 	}
 
 	
-	//message
-	char buffer[BUFFER_SIZE];
-	char username[NAME_SIZE];
+
 	
 	//get username
 	printf("Enter your username: ");
 	fgets(username, sizeof(username), stdin);
 	username[strcspn(username, "\n")] = '\0';
 
+	//make receiving thread
+	pthread_t receive_thread;
+	if (pthread_create(&receive_thread, NULL, receive_messages, NULL) != 0) {
+		perror("Could not creat receive thread");
+		close(client_fd);
+		exit(-1);
+	}
+
+
+	
+	char buffer[BUFFER_SIZE];
+	
 	//loop to send and receive
 	while (1) {
 		
@@ -74,58 +117,17 @@ int main()
 			break;
 		}
 		
-		//get replies, right now only gets reply once input //message
-        char buffer[BUFFER_SIZE];
-        char username[NAME_SIZE];
-        //loop to send and recieve
-        while (1) {
-
-                //user input
-                printf("%s: ", username);
-                fgets(buffer, sizeof(buffer), stdin);
-
-                //send input message
-                send(client_fd, buffer, strlen(buffer), 0);
-
-                //get replies
-                memset(buffer, 0, sizeof(buffer));
-                ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-
-                if (bytes_received == 0) {
-                        printf("Connection closed by peer.");
-                        break;
-                }
-                if (bytes_received < 0) {
-                        printf("Connection failed.");
-                        break;
-                }
-
-                printf("From server: %s", buffer);
-
-
-        }
-
-        close(client_fd);
-        return 0;
-		memset(buffer, 0, sizeof(buffer));
-		ssize_t bytes_received = recv(client_fd, &buffer, sizeof(buffer) - 1, 0);
-
-		if (bytes_received == 0) {
-			printf("Connection closed by peer.");
+		if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
+			perror("Input error");
 			break;
-		} 
-		if (bytes_received < 0) {
-			printf("Connection failed.");
-			break;
-		}
-
-		printf("%s", buffer);
-
-
-		
+		}	
 
 	}
 	
+
+        
+	pthread_join(receive_thread, NULL);
 	close(client_fd);
 	return 0;
 }
+
