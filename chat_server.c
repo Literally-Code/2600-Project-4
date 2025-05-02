@@ -27,7 +27,7 @@ pthread_mutex_t history_mutex = PTHREAD_MUTEX_INITIALIZER;
 FILE* history_file;
 const char* history_location = "./mhist";
 int server_fd;
-connection connections[MAX_CONNECTIONS];
+connection connections[MAX_CONNECTIONS] = {0};
 
 void* handle_client(void* arg)
 {
@@ -36,6 +36,8 @@ void* handle_client(void* arg)
 
 	char message[BUFFER_SIZE];
 	char history[HISTORY_SIZE];
+	
+	printf("Client \'%s\' at %s%s connected\n", client_conn->client_name, inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port));
 
 	// Send current chat history
 	history_file = fopen(history_location, "r");
@@ -83,6 +85,7 @@ int get_open_spot()
 {
 	for (int i = 0; i < MAX_CONNECTIONS; i++)
 	{
+		printf("Checking connection %d activity status: %d", i, connections[i].active);
 		if (!connections[i].active)
 			return i;
 	}
@@ -135,25 +138,29 @@ int main()
 		
 		int next_free_spot = get_open_spot();
 		
-		if (next_free_spot = -1)
+		if (next_free_spot == -1)
 		{
 			perror("Maximum connections reached, cannot accept additional connection\n");
 			continue;
 		}
 
-		// Spawn new thread. Thread will run indefinitely, handling client connections 
-		int create_thread_result = pthread_create(&(connections[next_free_spot].thread), NULL, handle_client, (void*)&client_addr);
-
-		if (create_thread_result != 0)
-		{
-			perror("pthread_create failed\n");
-			continue;
-		}
-		
 		connections[next_free_spot].id = next_free_spot;
 		connections[next_free_spot].active = 1;
 		// TODO: Add name implementation
 		connections[next_free_spot].client_name[0] = '\0';
+		connections[next_free_spot].client_addr = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
+		*(connections[next_free_spot].client_addr) = client_addr; 
+		
+		// Spawn new thread. Thread will run indefinitely, handling client connections 
+		int create_thread_result = pthread_create(&(connections[next_free_spot].thread), NULL, handle_client, (void*)&connections[next_free_spot]);
+
+		if (create_thread_result != 0)
+		{
+			connections[next_free_spot].active = 0;
+			perror("pthread_create failed\n");
+			continue;
+		}
+		
 
 		// Detach the thread because we don't care about it's result
 		pthread_detach(connections[next_free_spot].thread);

@@ -52,6 +52,7 @@ int main()
 	//loop to send and recieve
 	while (1) {
 		//get current chat and print
+		printf("Connection successful, gathering chat history\n");
 		recv(client_fd, &history, HISTORY_SIZE, 0);
 		printf(history);
 
