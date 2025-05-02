@@ -41,6 +41,7 @@ void* handle_client(void* arg)
 	while (1)
 	{
 		// I can't spell recie received recieved??
+		// lol
 		ssize_t bytes_rcvd = recv(server_fd, buffer, BUFFER_SIZE - 1, 0);
 		// Set the last character to a null terminator jusssst in case
 		buffer[BUFFER_SIZE - 1] = '0';
@@ -125,7 +126,7 @@ int main()
 		
 		int next_free_spot = get_open_spot();
 		
-		if (next_free_spot = -1)
+		if (next_free_spot == -1)
 		{
 			perror("Maximum connections reached, cannot accept additional connection\n");
 			continue;
