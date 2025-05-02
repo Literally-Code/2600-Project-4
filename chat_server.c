@@ -29,11 +29,23 @@ FILE* history_file;
 const char* history_location = "./mhist";
 int server_fd;
 connection connections[MAX_CONNECTIONS] = {0};
+pthread_t interface_thread;
 
-void* shell_thread(void* arg)
+void* handle_interface(void* arg)
 {
 	printf("Running server interface. Press ENTER to close the server\n> ");
 	getc(stdin);
+	close(server_fd);
+
+	for (int i = 0; i < MAX_CONNECTIONS; i++)
+	{
+		if (connections[i].active)
+		{
+			connections[i].active = 0;
+			close(connections[i].client_fd);
+		}
+	}
+	exit(0);
 }
 
 void* handle_client(void* arg)
@@ -51,7 +63,15 @@ void* handle_client(void* arg)
 		history_file = fopen(history_location, "r");
 		fread(history, sizeof(char), HISTORY_SIZE, history_file);
 		printf("Sending history: %s\n", history);
-		send(client_conn->client_fd, history, strlen(history), 0);
+		
+		// Send to each connection
+		for (int i = 0; i < MAX_CONNECTIONS; i++)
+		{
+			if (connections[i].active)
+			{
+				send(connections[i].client_fd, history, strlen(history), 0);
+			}
+		}
 		printf("History sent\n");
 		fclose(history_file);
 
@@ -130,6 +150,8 @@ int main()
 	}
 
 	printf("Listening on port %d\n", PORT);
+	
+	int create_interface_result = pthread_create(&interface_thread, NULL, handle_interface, NULL);
 
 	// Connection loop
 	while (1)

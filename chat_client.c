@@ -5,14 +5,38 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stddef.h>
+#include <pthread.h>
 
 #define HOST "localhost"
 #define PORT 59222
 #define HISTORY_SIZE 2048
 #define BUFFER_SIZE 1024
 
+char buffer[BUFFER_SIZE];
+char history[HISTORY_SIZE];
+
+void* handle_update_history(void* arg)
+{
+	int client_fd = *((int*)arg);
+
+	do
+	{
+		ssize_t bytes_rcvd = recv(client_fd, history, BUFFER_SIZE, 0);
+
+		if (bytes_rcvd == 0)
+		{
+			printf("Connection closed by server.\n");
+			exit(-1);
+		}
+
+		printf("%s\n", history);
+	} 
+	while (1);
+}
+
 int main()
 {
+	pthread_t update_thread;
 	int client_fd = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (client_fd < 0)
@@ -51,31 +75,20 @@ int main()
 	
 	printf("Connection successful, gathering chat history\n");
 
+	// Spawn thread for updating when server sends message data
+	pthread_create(&update_thread, NULL, handle_update_history, (void*)&client_fd);
+
 	//message
-	char buffer[BUFFER_SIZE];
-	char history[HISTORY_SIZE];
 	//loop to send and recieve
 	while (1) {
-		//get current chat and print
-		int total = 0;
-
-		ssize_t bytes_rcvd = recv(client_fd, history, HISTORY_SIZE, 0);
-		printf("%d%s\n", bytes_rcvd, history);
-
-		if (bytes_rcvd == 0)
-		{
-			printf("Connection terminated by server.\n");
-			break;
-		}
-
 		//user input
-		printf("You: ");
 		fgets(buffer, BUFFER_SIZE, stdin);
 		
 		//send input message
 		send(client_fd, buffer, strlen(buffer), 0);
 	}
 	
+
 	close(client_fd);
 	return 0;
 }
