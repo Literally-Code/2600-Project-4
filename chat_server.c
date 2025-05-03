@@ -17,6 +17,7 @@
 typedef struct
 {
 	int id;
+	int client_fd;
 	char client_name[NAME_SIZE];
 	struct sockaddr_in *addr_in;
 	char active;
@@ -42,9 +43,9 @@ void* handle_client(void* arg)
 	{
 		// I can't spell recie received recieved??
 		// lol
-		ssize_t bytes_rcvd = recv(server_fd, buffer, BUFFER_SIZE - 1, 0);
+		ssize_t bytes_rcvd = recv(client_conn->client_fd, buffer, BUFFER_SIZE - 1, 0);
 		// Set the last character to a null terminator jusssst in case
-		buffer[BUFFER_SIZE - 1] = '0';
+		buffer[bytes_rcvd] = '0';
 
 		// Handle disconnection
 		if (bytes_rcvd == 0)
@@ -57,7 +58,7 @@ void* handle_client(void* arg)
 		// Lock history file for appending client's message
 		pthread_mutex_lock(&history_mutex);
 		
-		history_file = fopen(history_location, "rw");
+		history_file = fopen(history_location, "a+");
 		fread(latest_history, sizeof(char), HISTORY_SIZE, history_file);
 		sprintf(updated_buffer, "%s%s\n", latest_history, buffer);
 
@@ -66,7 +67,7 @@ void* handle_client(void* arg)
 
 		pthread_mutex_unlock(&history_mutex);
 		// Prayer said here
-		send(server_fd, updated_buffer, BUFFER_SIZE + HISTORY_SIZE + PADDING, 0);
+		send(client_conn->client_fd, updated_buffer, strlen(updated_buffer), 0);
 	}
 }
 
@@ -133,7 +134,9 @@ int main()
 		}
 
 		// Spawn new thread. Thread will run indefinitely, handling client connections 
-		int create_thread_result = pthread_create(&(connections[next_free_spot].thread), NULL, handle_client, (void*)&client_addr);
+		connections[next_free_spot].client_fd = client_fd;
+
+		int create_thread_result = pthread_create(&(connections[next_free_spot].thread), NULL, handle_client, (void*)&connections[next_free_spot]);
 
 		if (create_thread_result != 0)
 		{
@@ -149,7 +152,6 @@ int main()
 		// Detach the thread because we don't care about it's result
 		pthread_detach(connections[next_free_spot].thread);
 
-		close(client_fd);
 	}
 
 	pthread_mutex_destroy(&history_mutex);
