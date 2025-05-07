@@ -36,9 +36,8 @@ void* receive_messages(void* arg){
 
 		//print receiving messages
 		buffer[bytes_received] = '\0'; //safety
-		printf("%s", buffer);
+		printf("%s: %s", username, buffer);
 	}
-
 	return NULL;
 }
 
@@ -109,18 +108,23 @@ int main()
 		
 		//user input
 		printf("%s: ", username);
-		fgets(buffer, sizeof(buffer), stdin);
+			
+		if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
+			perror("Input error");
+			break;
+		}
+
+		
+		char message[BUFFER_SIZE];
+    		snprintf(message, sizeof(message), "%s: %s", username, buffer);
 		
 		//send input message
-		if(send(client_fd, buffer, strlen(buffer), 0) < 0) {
+		if(send(client_fd, message, strlen(message), 0) < 0) {
 			perror("Message send failed.");
 			break;
 		}
 		
-		if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-			perror("Input error");
-			break;
-		}	
+		
 
 	}
 	
