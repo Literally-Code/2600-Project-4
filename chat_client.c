@@ -109,8 +109,8 @@ int main()
 	while (1) {
 		
 		//user input
-		printf("%s: ", username);
-		fflush(stdout);
+		//printf("%s: ", username);
+		//fflush(stdout);
 			
 		if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
 			perror("Input error");
@@ -119,6 +119,7 @@ int main()
 
 		
 		if (buffer[0] == '\n'){
+			printf("%s: ", username);
 			continue;
 		}
 
