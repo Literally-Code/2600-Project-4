@@ -3,50 +3,61 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <stddef.h>
 #include <pthread.h>
+#include <netdb.h>
 
 #define HOST "localhost"
 #define PORT 59222
-#define HISTORY_SIZE 2048
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 512
+#define NAME_SIZE 16
 
-char buffer[BUFFER_SIZE];
-char history[HISTORY_SIZE];
 
-void* handle_update_history(void* arg)
-{
-	int client_fd = *((int*)arg);
+int client_fd;
+char username[NAME_SIZE];
 
-	do
-	{
-		ssize_t bytes_rcvd = recv(client_fd, history, BUFFER_SIZE, 0);
+//helper function for the recieve thread
+void* receive_messages(void* arg){
+	char buffer[BUFFER_SIZE];
 
-		if (bytes_rcvd == 0)
-		{
-			printf("Connection closed by server.\n");
-			exit(-1);
-		}
+	while(1) {
+		//clear buffer
+		ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+		//error checking
+		if (bytes_received == 0) {
+            		printf("Connection closed by server.\n");
+            		break;
+        	} 
+        
+		if (bytes_received < 0) {
+            		printf("Connection failed.\n");
+            		break;
+       		}
 
-		printf("%s\n", history);
-	} 
-	while (1);
+		//print receiving messages
+		buffer[bytes_received] = '\0'; //safety
+		printf("%s", buffer);
+	}
+
+	return NULL;
 }
 
 int main()
 {
-	pthread_t update_thread;
-	int client_fd = socket(AF_INET, SOCK_STREAM, 0);
-
+	//init client_fd
+	client_fd = socket(AF_INET, SOCK_STREAM, 0);
+	
+	//error checking client_fd
 	if (client_fd < 0)
 	{
 		perror("Could not open socket\n");
 		exit(-1);
 	}
 
-	struct hostent* host_ptr = gethostbyname(HOST);
+	//init host_ptr
+	struct hostent *host_ptr = gethostbyname(HOST);
 	
+	//error checking host_pot
 	if (host_ptr == NULL)
 	{
 		perror("Could not get host\n");
@@ -59,36 +70,64 @@ int main()
 		exit(-1);
 	}
 
-
+	//initializing server_addr
 	struct sockaddr_in server_addr;
 	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = ((struct in_addr*)host_ptr->h_addr_list[0])->s_addr;
 	server_addr.sin_port = htons(PORT);
 	
+	//error checking server_addr
 	if (connect(client_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
 	{
 		perror("Could not connect to server\n");
 		close(client_fd);
+	}
+
+	
+
+	
+	//get username
+	printf("Enter your username: ");
+	fgets(username, sizeof(username), stdin);
+	username[strcspn(username, "\n")] = '\0';
+
+	//make receiving thread
+	pthread_t receive_thread;
+	if (pthread_create(&receive_thread, NULL, receive_messages, NULL) != 0) {
+		perror("Could not creat receive thread");
+		close(client_fd);
 		exit(-1);
 	}
+
+
 	
-	printf("Connection successful, gathering chat history\n");
-
-	// Spawn thread for updating when server sends message data
-	pthread_create(&update_thread, NULL, handle_update_history, (void*)&client_fd);
-
-	//message
-	//loop to send and recieve
+	char buffer[BUFFER_SIZE];
+	
+	//loop to send and receive
 	while (1) {
+		
 		//user input
-		fgets(buffer, BUFFER_SIZE, stdin);
+		printf("%s: ", username);
+		fgets(buffer, sizeof(buffer), stdin);
 		
 		//send input message
-		send(client_fd, buffer, strlen(buffer), 0);
+		if(send(client_fd, buffer, strlen(buffer), 0) < 0) {
+			perror("Message send failed.");
+			break;
+		}
+		
+		if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
+			perror("Input error");
+			break;
+		}	
+
 	}
 	
 
+        
+	pthread_join(receive_thread, NULL);
 	close(client_fd);
 	return 0;
 }
+
