@@ -118,6 +118,10 @@ int main()
 		}
 
 		
+		if (buffer[0] == '\n'){
+			continue;
+		}
+
 		char message[BUFFER_SIZE];
     		snprintf(message, sizeof(message), "%s: %s", username, buffer);
 		
