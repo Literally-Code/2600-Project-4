@@ -36,7 +36,9 @@ void* receive_messages(void* arg){
 
 		//print receiving messages
 		buffer[bytes_received] = '\0'; //safety
-		printf("%s: %s", username, buffer);
+		printf("\n%s", buffer);
+		printf("%s: ", username);
+		fflush(stdout);
 	}
 	return NULL;
 }
@@ -108,6 +110,7 @@ int main()
 		
 		//user input
 		printf("%s: ", username);
+		fflush(stdout);
 			
 		if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
 			perror("Input error");
