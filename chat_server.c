@@ -45,6 +45,7 @@ void* handle_interface(void* arg)
 			close(connections[i].client_fd);
 		}
 	}
+	printf("Server closed\n");
 	exit(0);
 }
 
@@ -59,6 +60,8 @@ void* handle_client(void* arg)
 
 	do
 	{
+		memset(history, '\0', HISTORY_SIZE);
+		memset(message, '\0', BUFFER_SIZE);
 		// Send current chat history
 		history_file = fopen(history_location, "r");
 		fread(history, sizeof(char), HISTORY_SIZE, history_file);
@@ -81,6 +84,9 @@ void* handle_client(void* arg)
 		ssize_t bytes_rcvd = recv(client_conn->client_fd, message, BUFFER_SIZE - 1, 0);
 		// Set the last character to a null terminator jusssst in case
 		message[BUFFER_SIZE - 1] = '\0';
+
+		printf("\033[2J\033[H");
+		printf("Message received: %s - bytes %d\n", message, bytes_rcvd);
 
 		// Handle disconnection
 		if (bytes_rcvd == 0)
@@ -142,6 +148,9 @@ int main()
 			perror("Socket bind error\n");
 			exit(-1);
 	}
+
+	int opt = 1;
+	setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
 	if (listen(server_fd, MAX_CONNECTIONS) < 0)
 	{

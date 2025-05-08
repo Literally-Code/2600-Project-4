@@ -83,10 +83,8 @@ int main()
 	{
 		perror("Could not connect to server\n");
 		close(client_fd);
+		exit(-1);
 	}
-
-	
-
 	
 	//get username
 	printf("Enter your username: ");
@@ -107,7 +105,6 @@ int main()
 	
 	//loop to send and receive
 	while (1) {
-		
 		//user input
 		//printf("%s: ", username);
 		//fflush(stdout);
@@ -119,9 +116,10 @@ int main()
 
 		
 		if (buffer[0] == '\n'){
-			printf("%s: ", username);
+			printf("Type something to send a message\n%s: ", username);
 			continue;
 		}
+		printf("\033[2J\033[H");
 
 		char message[BUFFER_SIZE];
     		snprintf(message, sizeof(message), "%s: %s", username, buffer);
