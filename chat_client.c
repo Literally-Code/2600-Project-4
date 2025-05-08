@@ -119,7 +119,9 @@ int main()
 			printf("Type something to send a message\n%s: ", username);
 			continue;
 		}
-		printf("\033[2J\033[H");
+		
+		//printf("\033[2J\033[H");
+		//fflush(stdout);
 
 		char message[BUFFER_SIZE];
     		snprintf(message, sizeof(message), "%s: %s", username, buffer);
