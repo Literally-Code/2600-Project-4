@@ -122,7 +122,7 @@ int main()
 			continue;
 		}
 		
-		printf("\033[2J\033[H");
+		//printf("\033[2J\033[H");
 		//fflush(stdout);
 
 		char message[BUFFER_SIZE];
