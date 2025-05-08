@@ -143,14 +143,18 @@ int main()
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	server_addr.sin_port = htons(PORT);
 
+	int opt = 1;
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        perror("setsockopt failed");
+        exit(EXIT_FAILURE);
+    }	
+
 	if (bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
 	{
 			perror("Socket bind error\n");
 			exit(-1);
 	}
 
-	int opt = 1;
-	setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
 	if (listen(server_fd, MAX_CONNECTIONS) < 0)
 	{
