@@ -23,6 +23,8 @@ void* receive_messages(void* arg){
 	while(1) {
 		//clear buffer
 		ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+		
+		printf("\033[2J\033[H");
 		//error checking
 		if (bytes_received == 0) {
             		printf("Connection closed by server.\n");
