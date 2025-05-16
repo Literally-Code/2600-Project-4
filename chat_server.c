@@ -6,10 +6,10 @@
 #include <pthread.h>
 #include <stddef.h>
 
-#define PORT 59222
+#define PORT 59223
 #define MAX_CONNECTIONS 10
-#define BUFFER_SIZE 1024
-#define HISTORY_SIZE 2048
+#define BUFFER_SIZE 256
+#define HISTORY_SIZE 1024
 #define PADDING 8
 #define NAME_SIZE 16
 
@@ -33,7 +33,7 @@ pthread_t interface_thread;
 
 void* handle_interface(void* arg)
 {
-	printf("Running server interface. Press ENTER to close the server\n> ");
+	printf("Running server interface. Press ENTER at any time to close the server\n");
 	getc(stdin);
 	close(server_fd);
 
@@ -64,6 +64,16 @@ void* handle_client(void* arg)
 		memset(message, '\0', BUFFER_SIZE);
 		// Send current chat history
 		history_file = fopen(history_location, "r");
+		fseek(history_file, -HISTORY_SIZE, SEEK_END);
+		
+		// Skip past first line
+		int ch;
+		while ((ch = fgetc(history_file)) != EOF) {
+			if (ch == '\n') {
+				break;
+			}
+		}
+
 		fread(history, sizeof(char), HISTORY_SIZE, history_file);
 		printf("Sending history: %s\n", history);
 		
@@ -82,9 +92,14 @@ void* handle_client(void* arg)
 		printf("Processing next message...\n");
 		// I can't spell recie received recieved??
 		ssize_t bytes_rcvd = recv(client_conn->client_fd, message, BUFFER_SIZE - 1, 0);
-		// Set the last character to a null terminator jusssst in case
 		message[BUFFER_SIZE - 1] = '\0';
+		message[BUFFER_SIZE - 2] = '\n';
 
+		char discard_buf[BUFFER_SIZE];
+		ssize_t bytes_read = 0;
+		while ((bytes_read = recv(client_conn->client_fd, discard_buf, BUFFER_SIZE, MSG_DONTWAIT)) > 0); // Discard the rest of the message
+
+		// Clear the terminal
 		printf("\033[2J\033[H");
 		printf("Message received: %s - bytes %d\n", message, bytes_rcvd);
 
@@ -106,9 +121,13 @@ void* handle_client(void* arg)
 		int f_size = ftell(history_file);
 		
 		if (f_size > HISTORY_SIZE)
+		{
 			fseek(history_file, -HISTORY_SIZE, SEEK_END);
+		}
 		else
+		{
 			fseek(history_file, 0, SEEK_SET);
+		}
 
 		fread(history, sizeof(char), HISTORY_SIZE, history_file);
 
@@ -155,7 +174,6 @@ int main()
 			exit(-1);
 	}
 
-
 	if (listen(server_fd, MAX_CONNECTIONS) < 0)
 	{
 		perror("Listen error\n");
@@ -164,6 +182,25 @@ int main()
 
 	printf("Listening on port %d\n", PORT);
 	
+	// Initialize mhist file if its empty
+	history_file = fopen(history_location, "r+");
+	if (history_file == NULL)
+	{
+		printf("Could not open history file\n");
+		pthread_mutex_destroy(&history_mutex);
+		close(server_fd);
+		exit(-1);
+	}
+	else
+	{
+		long file_size = ftell(history_file);
+		fseek(history_file, 0, SEEK_END);
+		if (file_size < 1)
+		{
+			fseek(history_file, 0, SEEK_SET);
+			fprintf(history_file, " \nWelcome to the chatroom!\n");
+		}
+	}
 	int create_interface_result = pthread_create(&interface_thread, NULL, handle_interface, NULL);
 
 	// Connection loop

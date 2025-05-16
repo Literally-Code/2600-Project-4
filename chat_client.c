@@ -6,12 +6,14 @@
 #include <stddef.h>
 #include <pthread.h>
 #include <netdb.h>
+#include <ctype.h>
 
 #define HOST "localhost"
-#define PORT 59222
+#define PORT 59223
 #define BUFFER_SIZE 512
 #define NAME_SIZE 16
 
+#define MIN_USERNAME_LENGTH 3
 
 int client_fd;
 char username[NAME_SIZE];
@@ -21,19 +23,20 @@ void* receive_messages(void* arg){
 	char buffer[BUFFER_SIZE];
 
 	while(1) {
-		//clear buffer
 		ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 		
 		printf("\033[2J\033[H");
 		//error checking
 		if (bytes_received == 0) {
             		printf("Connection closed by server.\n");
-            		break;
+            		exit(-1);
+					break;
         	} 
         
 		if (bytes_received < 0) {
             		printf("Connection failed.\n");
-            		break;
+            		exit(-1);
+					break;
        		}
 
 		//print receiving messages
@@ -43,6 +46,23 @@ void* receive_messages(void* arg){
 		fflush(stdout);
 	}
 	return NULL;
+}
+
+char processCommand(char *str) {
+    int count = 0;
+    for (int i = 0; str[i]; i++) {
+        if (!isspace(str[i])) {
+            str[count++] = str[i];
+        }
+    }
+    str[count] = '\0';
+
+	if (!strcmp(str, "!exit"))
+	{
+		printf("Connection closed by client\n");
+		exit(0);
+	}
+	printf("Command not found\n");
 }
 
 int main()
@@ -88,21 +108,41 @@ int main()
 		exit(-1);
 	}
 	
+	printf("Connection established. Type !exit to exit at any time\n");
 	//get username
-	printf("Enter your username: ");
-	fgets(username, sizeof(username), stdin);
-	username[strcspn(username, "\n")] = '\0';
+	char valid_username = 0;
+	
+	while (!valid_username)
+	{
+		printf("Enter your username: ");
+		fgets(username, sizeof(username), stdin);
+		username[strcspn(username, "\n")] = '\0';
+
+		valid_username = 1;
+		
+		//incase user exits in username
+		if (username[0] == '!')
+		{
+			processCommand(username);
+			valid_username = 0;
+			continue;
+		}
+
+		if (strlen(username) < MIN_USERNAME_LENGTH)
+		{
+			printf("Username must be at least %d characters long\n", MIN_USERNAME_LENGTH);
+			valid_username = 0;
+		}
+	}
 
 	//make receiving thread
 	pthread_t receive_thread;
 	if (pthread_create(&receive_thread, NULL, receive_messages, NULL) != 0) {
-		perror("Could not creat receive thread");
+		perror("Could not create receive thread");
 		close(client_fd);
 		exit(-1);
 	}
 
-
-	
 	char buffer[BUFFER_SIZE];
 	
 	//loop to send and receive
@@ -121,24 +161,26 @@ int main()
 			printf("Type something to send a message\n%s: ", username);
 			continue;
 		}
+
+		if (buffer[0] == '!')
+		{
+			processCommand(buffer);
+			printf("%s: ", username);
+			continue;
+		}
 		
 		//printf("\033[2J\033[H");
 		//fflush(stdout);
 
 		char message[BUFFER_SIZE];
-    		snprintf(message, sizeof(message), "%s: %s", username, buffer);
+		snprintf(message, sizeof(message), "%s: %s", username, buffer);
 		
 		//send input message
 		if(send(client_fd, message, strlen(message), 0) < 0) {
 			perror("Message send failed.");
 			break;
 		}
-		
-		
-
 	}
-	
-
         
 	pthread_join(receive_thread, NULL);
 	close(client_fd);
